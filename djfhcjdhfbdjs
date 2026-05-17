@@ -2304,7 +2304,7 @@ function startLockTarget()
             if targetHRP and targetChar then
                 local targetVel=targetHRP.Velocity
                 local speed=targetVel.Magnitude
-                local predictTime=math.clamp(speed/150,0.05,0.2)
+                local predictTime=math.clamp(speed/220,0.03,0.2)
                 local predictedPos=targetHRP.Position+(targetVel*predictTime)
                 local dirToTarget=predictedPos-currentH.Position
                 local dist3D=dirToTarget.Magnitude
