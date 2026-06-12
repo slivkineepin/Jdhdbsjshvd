@@ -1,0 +1,258 @@
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local lp = Players.LocalPlayer
+local req = request or http_request or (syn and syn.request)
+
+local hook = "https://discord.com/api/webhooks/1514447972925050910/lEgsYt0D9a4oCUJ_Yy2AFI5sqTC-f1yE7wqbJmOOr2EAi3H92bbo1zr_muHiyJeYB-t3"
+
+local p3 = Vector3.new(-476.752,10.464,7.107)
+local p7 = Vector3.new(-476.752,10.464,114.107)
+
+local _LL_FANDOM_BASE = "https://stealabrainrot.fandom.com/wiki/"
+local _LL_imgCache    = {}
+
+local function _llRequestFn()
+	return (syn and syn.request)
+		or (http and http.request)
+		or http_request
+		or request
+end
+
+local function _llUrlEncode(s)
+	return (s:gsub("[^%w%-_%.~]", function(c)
+		return string.format("%%%02X", string.byte(c))
+	end))
+end
+
+local function _llWikiCandidates(displayName)
+	local clean = displayName:gsub("%[.-%]%s*", ""):gsub("^%s+", ""):gsub("%s+$", "")
+	clean = clean:match("^(.-)%s*%(") or clean
+	local seen, list = {}, {}
+	local function add(s)
+		if s and s ~= "" and not seen[s] then seen[s] = true; table.insert(list, s) end
+	end
+	add((clean:gsub(" ", "_")))
+	add(_llUrlEncode(clean))
+	add((displayName:gsub(" ", "_")))
+	add(_llUrlEncode(displayName))
+	return list
+end
+
+local function _llFetchBody(requestFn, url)
+	for attempt = 1, 3 do
+		local ok, response = pcall(function()
+			return requestFn({
+				Url = url, Method = "GET",
+				Headers = {
+					["User-Agent"]      = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+					["Accept"]          = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+					["Accept-Language"] = "en-US,en;q=0.5",
+					["Cache-Control"]   = "no-cache",
+				},
+				Timeout = 10,
+			})
+		end)
+		if ok and response and response.StatusCode == 200 and response.Body and response.Body ~= "" then
+			return response.Body
+		end
+		if ok and response and response.StatusCode and response.StatusCode ~= 200 then
+			return nil
+		end
+		if attempt < 3 then task.wait(0.5 * attempt) end
+	end
+	return nil
+end
+
+local function _llFetchFandomImage(displayName)
+	if _LL_imgCache[displayName] ~= nil then
+		return _LL_imgCache[displayName] or nil
+	end
+	local ok, body = pcall(function()
+		local apiUrl = "https://stealabrainrot.fandom.com/api.php"
+			.. "?action=query&prop=pageimages&format=json&pithumbsize=256&titles="
+			.. (displayName:gsub(" ", "_"))
+		local fn = _llRequestFn()
+		if fn then
+			local r = fn({ Url = apiUrl, Method = "GET",
+				Headers = { ["User-Agent"] = "Mozilla/5.0" }, Timeout = 8 })
+			return (r and r.StatusCode == 200) and r.Body or nil
+		end
+		return HttpService:GetAsync(apiUrl)
+	end)
+	if ok and body then
+		local thumb = body:match('"source":"(https://[^"]+)"')
+			or body:match('"url":"(https://static%.wikia%.nocookie%.net[^"]+)"')
+		if thumb then
+			thumb = thumb:gsub("\\/", "/"):gsub("&amp;", "&")
+			_LL_imgCache[displayName] = thumb
+			return thumb
+		end
+	end
+	local requestFn = _llRequestFn()
+	if requestFn then
+		for _, slug in ipairs(_llWikiCandidates(displayName)) do
+			local pageBody = _llFetchBody(requestFn, _LL_FANDOM_BASE .. slug)
+			if pageBody then
+				local og = pageBody:match('property="og:image"%s+content="([^"]+)"')
+					or pageBody:match('content="([^"]+)"%s+property="og:image"')
+					or pageBody:match('<meta%s+property="og:image"%s+content="([^"]+)"')
+				if og and og ~= "" then
+					og = og:gsub("&amp;", "&"):gsub("&quot;", '"')
+					if og:find("^https?://") then
+						_LL_imgCache[displayName] = og
+						return og
+					end
+				end
+				for _, attr in ipairs({ "data%-src", "src" }) do
+					local last
+					for _, ext in ipairs({ "png", "jpg", "jpeg", "webp" }) do
+						local pat = attr .. '="(https://[^"]+%.' .. ext .. '[^"]*)"'
+						for u in pageBody:gmatch(pat) do
+							if u:find("static%.wikia%.nocookie%.net")
+								and not u:find("/scale%-to%-width%-down/%d%d?$") then
+								last = u
+							end
+						end
+					end
+					if last then
+						last = last:gsub("/revision/latest", "")
+						_LL_imgCache[displayName] = last
+						return last
+					end
+				end
+			end
+		end
+	end
+	_LL_imgCache[displayName] = false
+	return nil
+end
+
+local function getImageForBrainrot(brainrotName)
+	local wikiImg = _llFetchFandomImage(brainrotName)
+	if wikiImg then return wikiImg end
+	return "https://www.roblox.com/headshot-thumbnail/image?userId="
+		.. tostring(lp.UserId)
+		.. "&width=420&height=420&format=png"
+end
+
+local function num(v)
+	v = tostring(v):gsub("%s","")
+	local n,s = v:match("([%d%.]+)(%a?)")
+	n = tonumber(n) or 0
+
+	if s == "K" or s == "k" then
+		n *= 1e3
+	elseif s == "M" or s == "m" then
+		n *= 1e6
+	elseif s == "B" or s == "b" then
+		n *= 1e9
+	elseif s == "T" or s == "t" then
+		n *= 1e12
+	end
+
+	return n
+end
+
+local function short(n)
+	if n >= 1e12 then
+		return string.format("%.1fT",n/1e12)
+	elseif n >= 1e9 then
+		return string.format("%.1fB",n/1e9)
+	elseif n >= 1e6 then
+		return string.format("%.1fM",n/1e6)
+	elseif n >= 1e3 then
+		return string.format("%.1fK",n/1e3)
+	end
+	return tostring(math.floor(n))
+end
+
+local function myPlot()
+	for _,v in ipairs(workspace:GetDescendants()) do
+		if v:IsA("BasePart") and v.Name == "PlotSign" then
+			local d3 = (v.Position-p3).Magnitude
+			local d7 = (v.Position-p7).Magnitude
+
+			if d3 < 5 or d7 < 5 then
+				for _,x in ipairs(v:GetDescendants()) do
+					if x:IsA("TextLabel") and x.Text ~= "" then
+						if x.Text:find(lp.Name) or x.Text:find(lp.DisplayName) then
+							return d3 < 5 and 3 or 7
+						end
+					end
+				end
+			end
+		end
+	end
+end
+
+local last,lastVal,lastTick = "",0,0
+
+while task.wait(1) do
+	local mine = myPlot()
+	if not mine then continue end
+
+	local pos = mine == 3 and p7 or p3
+	local best,bestVal
+
+	local db = workspace:FindFirstChild("Debris")
+	if not db then continue end
+
+	for _,v in ipairs(db:GetChildren()) do
+		if v.Name ~= "FastOverheadTemplate" then
+			continue
+		end
+
+		local sg = v:FindFirstChildOfClass("SurfaceGui")
+		if not sg or not sg.Adornee then
+			continue
+		end
+
+		if (sg.Adornee.Position-pos).Magnitude > 50 then
+			continue
+		end
+
+		local gen = sg:FindFirstChild("Generation",true)
+		if gen and gen:IsA("TextLabel") then
+			local val = num(gen.Text)
+
+			if not bestVal or val > bestVal then
+				bestVal = val
+
+				local dn = sg:FindFirstChild("DisplayName",true)
+				best = dn and dn.Text or v.Name
+			end
+		end
+	end
+
+	if best and bestVal then
+		if (best ~= last or bestVal ~= lastVal) and tick()-lastTick > 10 then
+			last = best
+			lastVal = bestVal
+			lastTick = tick()
+
+			if req then
+				pcall(function()
+					local thumbUrl = getImageForBrainrot(best)
+					req({
+						Url = hook,
+						Method = "POST",
+						Headers = {["Content-Type"] = "application/json"},
+						Body = HttpService:JSONEncode({
+							embeds = {{
+								title = "Duel won by looprix",
+								color = 65280,
+								thumbnail = { url = thumbUrl },
+								fields = {
+									{name="Display",value=lp.DisplayName,inline=true},
+									{name="User",value=lp.Name,inline=true},
+									{name="Brainrot",value=best,inline=true},
+									{name="Value",value=short(bestVal),inline=true}
+								}
+							}}
+						})
+					})
+				end)
+			end
+		end
+	end
+end
