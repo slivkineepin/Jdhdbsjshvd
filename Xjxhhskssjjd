@@ -57,7 +57,7 @@ task.spawn(function()
 	task.wait(2)
 	if cursedResetRemote then return end
 	for _,desc in ipairs(game:GetDescendants()) do
-		if desc:IsA("RemoteEvent") and desc.Name:sub(1,3)=="RE/" then cursedResetRemote=desc;break end
+		if desc:IsA("RemoteEvent") and desc.Name:sub(1,2)=="RE/" then cursedResetRemote=desc;break end
 	end
 end)
 
@@ -65,7 +65,7 @@ local _instaResetSpamBusy = false
 local function _cursedInstaResetCore()
 	if not cursedResetRemote then
 		for _,desc in ipairs(game:GetDescendants()) do
-			if desc:IsA("RemoteEvent") and desc.Name:sub(1,3)=="RE/" then cursedResetRemote=desc;break end
+			if desc:IsA("RemoteEvent") and desc.Name:sub(1,2)=="RE/" then cursedResetRemote=desc;break end
 		end
 	end
 	if not cursedResetRemote then return end
