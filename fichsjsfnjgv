@@ -62,7 +62,7 @@ function cursedInstaReset()
 	_instaResetSpamBusy = true
 	if showActionNotification then showActionNotification("RESET!") end
 	task.spawn(function()
-		for i = 1, 3 do
+		for i = 1, 2 do
 			_cursedInstaResetCore()
 			task.wait(0.08)
 		end
