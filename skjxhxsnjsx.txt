@@ -2904,8 +2904,8 @@ function stopLockTarget()
         if myHum then myHum.AutoRotate=true end
     end)
 end
-local BAT_V2_FOLLOW_DIST = 3.0
-local BAT_V2_LOOK_AHEAD = 5.0
+local BAT_V2_FOLLOW_DIST = 4.0
+local BAT_V2_LOOK_AHEAD = 6.0
 local BAT_V2_HEIGHT_OFFSET = 1.5
 local BAT_V2_AIMBOT_SPEED = 60
 local ROTATION_SPEED_MULTIPLIER = 20
